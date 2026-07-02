@@ -6,11 +6,23 @@ import psycopg2
 from pydantic import BaseModel
 from random import randrange
 from psycopg2.extras import RealDictCursor
+import time
+from sqlachemy.orm import Session,Depends
+from app import models
+from database import Base, engine, SessionLocal
 
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
 #schemas
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 class Post(BaseModel):
     title : str
     content : str
@@ -33,6 +45,11 @@ while True:
 @app.get("/")
 async def read_root():
     return {"message": "World"}
+
+@app.get("/sqlalchemy")
+async def test_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"data": posts}
 
 @app.get("/msg")
 async def msg():
