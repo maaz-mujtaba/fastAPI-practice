@@ -1,3 +1,4 @@
+from typing import Optional
 from dbm import error
 from typing import Optional
 from django import db
@@ -13,6 +14,7 @@ import time
 from sqlalchemy.orm import Session
 from app import models
 from database import engine,  get_db
+import schemas
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -21,10 +23,7 @@ app = FastAPI()
 #schemas
 
 
-class Post(BaseModel):
-    title : str
-    content : str
-    published : bool = True
+
      
 while True:
     try:
@@ -61,18 +60,18 @@ def find_post(id):
         if p['id'] == id:
             return p
 
-@app.get("/posts")
+@app.get("/posts", response_model = list[schemas.Post])
 async def get_posts(db : Session = Depends(get_db)):
     test_posts = db.query(models.Post).all()
     return {"data": test_posts}
 
 
 
-@app.post("/posts")
-async def createPosts(post: Post, db : Session = Depends(get_db)):
+@app.post("/posts",response_class=Response, status_code=status.HTTP_201_CREATED)
+async def createPosts(post: schemas.PostCreate, db : Session = Depends(get_db), response_model = schemas.Post):
 
-    new_post = models.Post(title = post.title, content = post.content, published = post.published)
-    #sames as models.Post(**post.dict())
+    #new_post = models.Post(title = post.title, content = post.content, published = post.published)
+    new_post =  models.Post(**post.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -84,7 +83,7 @@ async def get_latest_post():
     return {"latest_post" : post}
 
 @app.get("/posts/{id}")
-async def get_post(id : int, db : Session = Depends(get_db)):
+async def get_post(id : int, db : Session = Depends(get_db), response_model = schemas.Post):
 
     post = db.query(models.Post).filter(models.Post.id==id).first()
 
@@ -116,7 +115,7 @@ def delete_post(id : int, db : Session = Depends(get_db)):
     return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 @app.put("/posts/{id}")
-async def update_post(id : int, post: Post, db : Session = Depends(get_db)):
+async def update_post(id : int, post: schemas.PostUpdate, db : Session = Depends(get_db)):
     updated_post = db.query(models.Post).filter(models.Post.id == id)
     if not updated_post.first():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, 
@@ -136,3 +135,12 @@ def delete_post(id: int, db : Session = Depends(get_db)):
     db.commit()
     return Response(status_code=status.HTTP_204_NO_CONTENT)
     
+
+@app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
+def create_user(user : schemas.UserCreate, db : Session = Depends(get_db), ):
+
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
