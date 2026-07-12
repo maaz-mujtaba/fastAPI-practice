@@ -16,7 +16,7 @@ from app import models
 from database import engine,  get_db
 import schemas
 from utility import pwd_context
-from app.routers import post, user
+from app.routers import post, user, auth
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -46,5 +46,6 @@ def find_post(id):
 
 app.include_router(post.router)
 app.include_router(user.router)
+app.include_router(auth.router) 
 
 
