@@ -1,13 +1,31 @@
 from fastapi import FastAPI, Response, status, HTTPException, Depends, APIRouter
+from fastapi.security import OAuth2PasswordRequestForm
+from passlib.context import CryptContext
 from .. import models, schemas, utility
 from sqlalchemy.orm import Session
 from ..database import get_db
 from typing import List
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 router = APIRouter(
     prefix="/users",
     tags = ["Users"]
 )
+
+
+@router.post('/login', response_model = schemas.Token)
+def login(user_credentials : OAuth2PasswordRequestForm = Depends(), db : Session = Depends(database.get_db)):
+    user = db.query(models.User).filter(
+        models.User.email == user_credentials.username
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail = f"Invalid Credentials"
+        )
+    return user
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
 def create_user(user : schemas.UserCreate, db : Session = Depends(get_db), ):
